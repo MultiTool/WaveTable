@@ -74,7 +74,7 @@ public class CellRow extends ArrayList<Cell> {
     Cell cell;
     for (int cnt = 0; cnt < NumCells; cnt++) {
       cell = this.get(cnt);
-      cell.Amp = Value;
+      cell.Set_Amp(Value);
     }
   }
   /* ********************************************************************************* */
@@ -84,8 +84,7 @@ public class CellRow extends ArrayList<Cell> {
     Cell cell;
     for (int cnt = FromX; cnt < ToX; cnt++) {
       cell = this.get(cnt);
-      cell.Amp = Value;
-//      cell.Prev_Amp = Value;
+      cell.Set_Amp(Value);
     }
   }
   /* ********************************************************************************* */
@@ -94,7 +93,7 @@ public class CellRow extends ArrayList<Cell> {
     Cell cell;
     for (int cnt = 0; cnt < NumCells; cnt++) {
       cell = this.get(cnt);
-      cell.Prev_Amp = Value;
+      cell.Set_Prev_Amp(Value);
     }
   }
   /* ********************************************************************************* */
@@ -131,7 +130,7 @@ public class CellRow extends ArrayList<Cell> {
     double Sum = 0.0;
     for (int cnt = 0; cnt < NumCells; cnt++) {
       cell = this.get(cnt);
-      Sum += cell.Amp;
+      Sum += cell.Get_Amp();
     }
     return Sum;
   }

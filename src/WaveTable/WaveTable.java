@@ -42,6 +42,7 @@ public class WaveTable {
     double XOrg = 10, YOrg = 10;
     double CellWidth = 6, CellHeight = 6;
     CellWidth = CellHeight = 20;
+    CellWidth = CellHeight = 30;
     for (int RowCnt = 0; RowCnt < NumRows; RowCnt++) {
       CellRow crow = new CellRow(NumCols);
       crow.Assign_Box(XOrg, YOrg + (RowCnt * CellHeight), CellWidth, CellHeight);
@@ -56,17 +57,18 @@ public class WaveTable {
       crow.ConnectRows(crow_prev);// connect and wrap vertically
     }
     if (true) {
-      if (true) {
+//      this.Alter_Time();
+      if (false) {
         this.RandAmps();
       } else {
         this.Fill_Amps();
       }
     } else {
       // deaden borders
-      double slowtime = 0.0;// 0.00000001;
+      double slowtime = 0.001;// 0.00000001;
       crow = this.Rows.get(0);
-      crow.Fill_TimeRate(slowtime);
-      for (int ycnt = 0; ycnt < NumRows; ycnt++) {
+      crow.Fill_TimeRate(slowtime);// horizontal wall
+      for (int ycnt = 0; ycnt < (NumRows); ycnt++) {// vertical wall
         crow = this.Rows.get(ycnt);
         crow.Fill_TimeRate(0, 1, slowtime);
       }
@@ -75,6 +77,29 @@ public class WaveTable {
     this.Adjust_Sum(-this.StaticSum);
     this.StaticSum = this.Get_Sum();
     this.GenCnt = 0;
+  }
+  /* ********************************************************************************* */
+  public void Alter_Time() {
+    double slowtime = 0.0001;// 0.00000001;
+    CellRow crow = this.Rows.get(0);
+    int NumCols = this.Rows.get(0).size(), NumRows = this.Rows.size();
+    int MinCol = NumCols / 4, MaxCol = (NumCols * 3) / 4;
+    int MinRow = NumRows / 4, MaxRow = (NumRows * 3) / 4;
+//      crow.Fill_TimeRate(slowtime);
+    if (false) {
+      for (int ycnt = MinRow; ycnt < MaxRow; ycnt++) {
+        crow = this.Rows.get(ycnt);
+        crow.Fill_TimeRate(MinCol, MaxCol, slowtime);
+      }
+    } else {
+      MinCol = MaxCol = NumCols / 2;// or do triangle
+      for (int ycnt = MinRow; ycnt < MaxRow; ycnt++) {
+        crow = this.Rows.get(ycnt);
+        crow.Fill_TimeRate(MinCol, MaxCol, slowtime);
+        MinCol--;
+        MaxCol++;
+      }
+    }
   }
   /* ********************************************************************************* */
   public void RandAmps() {
@@ -105,7 +130,7 @@ public class WaveTable {
     // 16 has Sum:1.0800249583553523E-11 drift (practically 0)
     // 32 has Sum:3.780797896979493E-11 drift (practically 0)
     // 
-    int wlen = 16;
+    int wlen = 4;
     int half = wlen / 2;
     int cnt = 0;
     for (cnt = 0; cnt < NumRows; cnt++) {
@@ -337,12 +362,14 @@ public class WaveTable {
      of two opposite neighbors, and then multiplying by the current amp (height value) of the cell.
      By 'speed' I mean the rate of change of the altitude of the medium in each cell. 
      */
+    double Magic_Number = 3.6;
     double coordinate;
     double Angle = 0.0;
     double Amp_Prev = 0.0, Amp = 0.0, Amp_Next = 0.0;
     double Speed_Prev = 0.0, Speed = 0.0, Speed_Next = 0.0;
     double Curve = 0.0;
-    for (int cnt = 0; cnt < 200; cnt++) {
+    double AngleInc = 0.1;
+    for (int cnt = 0; cnt < 1000; cnt++) {
       Amp_Prev = Amp;
       Amp = Amp_Next;
       Amp_Next = Math.sin(Angle);
@@ -351,14 +378,17 @@ public class WaveTable {
       Speed = Speed_Next;
       Speed_Next = Amp_Next - Amp;
 
-//      double mm = 3.6 * Amp;// 3.6 is a mysterious magic number. 
-      double mm = 3.6 * Curve;// 3.6 is a mysterious magic number. 
-      coordinate = Speed_Next - Speed_Prev;
-//      coordinate = Speed_Prev - Speed_Next;// reverse direction
-      coordinate *= mm;
+//      double mm = Magic_Number * Amp;// 3.6 is a mysterious magic number. 
+      double mm = Magic_Number * Curve;// 3.6 is a mysterious magic number. 
+//      coordinate = Speed_Next - Speed_Prev;
+      coordinate = Speed_Prev - Speed_Next;// reverse direction. this is right minus left, if wave is moving left to right
+//      coordinate *= mm * (10000 / 2) / 1.793609607
+//      coordinate *= Curve * (10000 / 2) / 0.4982248908;
+      coordinate *= Curve * (10000);// * (1 / Math.sqrt(AngleInc));
+
 //      System.out.println("Amp:" + Amp + ", coordinate:" + coordinate);
       System.out.println("" + Angle + ", " + Amp + ", " + coordinate);
-      Angle += 0.01;
+      Angle += AngleInc;
     }
     System.out.println("Done");
     System.out.println("Ratio:" + 2.0 / (Math.PI));
