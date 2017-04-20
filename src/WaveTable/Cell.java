@@ -20,7 +20,9 @@ public class Cell {
 //  public double TRate = 0.9;// time rate
 //  public double TRate = 0.5;// time rate
 //  public double TRate = 0.1;// time rate
+//  public double TRate = 0.05;// time rate
   public double TRate = 0.01;// time rate
+//  public double TRate = 0.001;// time rate
 //  public double TRate = 0.0001;// time rate
 //  public double TRate = 0.00001;// time rate
   // z component of vector potential and its first derivative
@@ -61,7 +63,8 @@ public class Cell {
      of two opposite neighbors, and then multiplying by the current amp (height value) of the cell.
      By 'speed' I mean the rate of change of the altitude of the medium in each cell. 
      */
-    double Magic_Number = 10000;//3.6;
+    double Magic_Number3 = 10000;//3.6;
+    double Magic_Number = 4.814120606102579;
     Cell[] nbrs = this.NbrCross[Dim];
     Cell nbr0 = nbrs[0];// NAxis
     Cell nbr1 = nbrs[1];
@@ -71,12 +74,17 @@ public class Cell {
 //    double coordinate = nbr1.Speed - nbr0.Speed;// component? 
     double coordinate = nbr1.Speed - nbr0.Speed;// if energy ls flowing from nbr0 to nbr1, return value will be positive
     //coordinate = Speed_Prev - Speed_Next;// reverse direction. this is right minus left, if wave is moving left to right
-    coordinate *= (Magic_Number * Curve);
+//    coordinate *= (Magic_Number * Curve);
+    coordinate *= Math.signum(Curve) * Math.sqrt(Math.sqrt(Math.abs(Curve))) / Magic_Number;// who knows. emperically comes close to true. 
+    //    coordinate *= Curve * Magic_Number3;
+    coordinate *= Magic_Number3;
     return coordinate;
   }
   /* ********************************************************************************* */
   public void Set_Prev_Amp(double Prev_Amp0) {
-    this.Prev_Amp = Prev_Amp0;
+    double sqrT = Math.sqrt(this.TRate);// empirically this seems to work, but why?
+    this.Prev_Amp = Prev_Amp0 * sqrT;
+//    this.Prev_Amp = Prev_Amp0;
   }
   /* ********************************************************************************* */
   public double Get_Amp() {
@@ -199,20 +207,20 @@ public class Cell {
       ParentDC.gr.setFont(new Font("TimesRoman", Font.PLAIN, 10));
       ParentDC.gr.drawString(AmpTxt, (int) (this.XLoc), (int) (this.YLoc));
     }
-    if (true) {
+    if (false) {
       ParentDC.gr.setFont(new Font("TimesRoman", Font.PLAIN, 10));
       AmpTxt = String.format("%.2f", this.MaxAmp);
       ParentDC.gr.drawString(AmpTxt, (int) (this.XLoc), (int) (this.YLoc + 10));
       AmpTxt = String.format("%.2f", this.MinAmp);
       ParentDC.gr.drawString(AmpTxt, (int) (this.XLoc), (int) (this.YLoc + this.Hgt));
     }
-    if (false) {
+    if (true) {
       double hypot = Math.sqrt(SumSq);
-      if (Math.abs(hypot) > 0.001) {
+      if (Math.abs(hypot) > 0.00001) {
         for (int DimCnt = 0; DimCnt < NDims; DimCnt++) {
           this.PoyntingVect[DimCnt] /= hypot;
         }
-        double len = 7;
+        double len = this.Wdt / 2.0;
         ParentDC.gr.drawLine((int) (this.XCtr), (int) (this.YCtr), (int) (this.XCtr + this.PoyntingVect[0] * len), (int) (this.YCtr + this.PoyntingVect[1] * len));
       }
       ParentDC.gr.fillOval((int) (this.XCtr - 2), (int) (this.YCtr - 2), (int) (4), (int) (4));
