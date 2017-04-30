@@ -69,6 +69,28 @@ public class CellRow extends ArrayList<Cell> {
     }
   }
   /* ********************************************************************************* */
+  public void Set_WallnessX(int FromX, int ToX, boolean IsWall) {
+    int NumCells = this.size();
+    FromX = Math.min(NumCells, FromX);
+    ToX = Math.min(NumCells, ToX);
+    Cell cell;
+    for (int cnt = FromX; cnt < ToX; cnt++) {
+      cell = this.get(cnt);
+      cell.Set_WallnessX(IsWall);
+    }
+  }
+  /* ********************************************************************************* */
+  public void Set_Wallness(int FromX, int ToX, double Damp) {
+    int NumCells = this.size();
+    FromX = Math.min(NumCells, FromX);
+    ToX = Math.min(NumCells, ToX);
+    Cell cell;
+    for (int cnt = FromX; cnt < ToX; cnt++) {
+      cell = this.get(cnt);
+      cell.Set_Wallness(Damp);
+    }
+  }
+  /* ********************************************************************************* */
   public void Fill_Amps(double Value) {
     int NumCells = this.size();
     Cell cell;
@@ -135,6 +157,16 @@ public class CellRow extends ArrayList<Cell> {
     return Sum;
   }
   /* ********************************************************************************* */
+  public void Adjust_Sum_All(double Amount) {// raise or lower 'water level' of medium
+    int NumCells = this.size();
+    Cell cell;
+    Amount /= (double) NumCells;
+    for (int cnt = 0; cnt < NumCells; cnt++) {
+      cell = this.get(cnt);
+      cell.Adjust_Sum_All(Amount);
+    }
+  }
+  /* ********************************************************************************* */
   public void Adjust_Sum(double Amount) {// raise or lower 'water level' of medium
     int NumCells = this.size();
     Cell cell;
@@ -142,6 +174,15 @@ public class CellRow extends ArrayList<Cell> {
     for (int cnt = 0; cnt < NumCells; cnt++) {
       cell = this.get(cnt);
       cell.Adjust_Sum(Amount);
+    }
+  }
+  /* ********************************************************************************* */
+  public void Add_To_All(double Amount) {// raise or lower 'water level' of medium
+    int NumCells = this.size();
+    Cell cell;
+    for (int cnt = 0; cnt < NumCells; cnt++) {
+      cell = this.get(cnt);
+      cell.Add_To_All(Amount);
     }
   }
   /* ********************************************************************************* */

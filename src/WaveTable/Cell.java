@@ -20,24 +20,27 @@ public class Cell {
 //  public double TRate = 0.9;// time rate
 //  public double TRate = 0.5;// time rate
 //  public double TRate = 0.1;// time rate
-//  public double TRate = 0.05;// time rate
-  public double TRate = 0.01;// time rate
+  public double TRate = 0.05;// time rate
+//  public double TRate = 0.01;// time rate, normal
 //  public double TRate = 0.001;// time rate
 //  public double TRate = 0.0001;// time rate
 //  public double TRate = 0.00001;// time rate
+  public boolean IsWall = false;// eventually we will make this a separate class and override the related methods
   // z component of vector potential and its first derivative
   public double prev_az, az = 0.0, dazdt, dazdt2;
   double jx, jy;// current
   public Cell[][] NbrCross;// another way
   private double damp = 1.0;
   public double Tension = 0.0, Speed = 0.0;// Speed is also used as inertia
-  public double Basis;// average Amp of all my neighbors
+  public double Basis = 0.0;// average Amp of all my neighbors
   private double Prev_Amp = 0.0, Amp = 0.0, Next_Amp = 0.0;
-  public double Damp = 1.0;
-  double[] PoyntingVect = new double[NDims];
+  public double Damp = 1.0; //0.99;
+  double[] PoyntingVect_Prev = new double[NDims], PoyntingVect = new double[NDims];
+  private double EnergyMag_Prev, EnergyMag;
   public double XLoc = 0, YLoc = 0, Wdt = 10, Hgt = 10;// for drawing
   public double XCtr = 0.0, YCtr = 0.0;
   private double MinAmp = Double.POSITIVE_INFINITY, MaxAmp = Double.NEGATIVE_INFINITY;
+  double AvgAmp = 0.0, NumRuns = 0.0, SumAmp = 0;
   /* ********************************************************************************* */
   public Cell() {
     NbrCross = new Cell[NDims][NAxis];
@@ -65,20 +68,36 @@ public class Cell {
      */
     double Magic_Number3 = 10000;//3.6;
     double Magic_Number = 4.814120606102579;
+    double coordinate = 0.0;
     Cell[] nbrs = this.NbrCross[Dim];
     Cell nbr0 = nbrs[0];// NAxis
     Cell nbr1 = nbrs[1];
-    double Curve = Amp - ((nbr1.Amp + nbr0.Amp) / 2.0);// positive (middle up) or negative (middle down) curve
-//    double mm = Magic_Number * this.Amp;// what the heck is this?  negative value inverts the direction.  3.6 is a mysterious magic number. 
-//    double mm = Magic_Number * Curve;// is this more independent of sea level? 
-//    double coordinate = nbr1.Speed - nbr0.Speed;// component? 
-    double coordinate = nbr1.Speed - nbr0.Speed;// if energy ls flowing from nbr0 to nbr1, return value will be positive
-    //coordinate = Speed_Prev - Speed_Next;// reverse direction. this is right minus left, if wave is moving left to right
-//    coordinate *= (Magic_Number * Curve);
-    coordinate *= Math.signum(Curve) * Math.sqrt(Math.sqrt(Math.abs(Curve))) / Magic_Number;// who knows. emperically comes close to true. 
-    //    coordinate *= Curve * Magic_Number3;
-    coordinate *= Magic_Number3;
+    if (nbr0 != null && nbr1 != null) {
+      double Curve = Amp - ((nbr1.Get_Amp() + nbr0.Get_Amp()) / 2.0);// positive (middle up) or negative (middle down) curve
+      coordinate = nbr1.Speed - nbr0.Speed;// if energy ls flowing from nbr0 to nbr1, return value will be positive
+      if (false) {
+        coordinate *= (Magic_Number3 * Amp);// Falstad way. Vector direction is good unless average sea level is far from 0. 
+      } else if (true) {
+//      coordinate *= Math.signum(Curve) * Math.sqrt(Math.sqrt(Math.abs(Curve))) / Magic_Number;// who knows. emperically comes close to true, but not in vector direction
+//      coordinate *= Math.pow(Curve, 0.00125);
+        coordinate *= Math.signum(Curve);// this works well for vector direction but not for magnitude
+      } else {
+        coordinate *= Curve;
+      }
+    }
     return coordinate;
+  }
+  /* ********************************************************************************* */
+  public double Contrast_Energy_Vectors(double[] Vect0, double[] Vect1) {
+    // Assuming both vectors have been normalized to length 1
+    double DotProd = 0.0;// first get the dot product
+    for (int cnt = 0; cnt < NDims; cnt++) {
+      DotProd += Vect0[cnt] * Vect1[cnt];
+    }
+    double Radius = 1.0;
+    double Metric = Radius - DotProd;// if DotProd is 1, becomes 0.  If DotProd is -1, becomes 2.  
+    Metric /= 2.0;// normalize to range 0.0 to 1.0.  This gives cartoon relativistic velocity ratio
+    return Metric;
   }
   /* ********************************************************************************* */
   public void Set_Prev_Amp(double Prev_Amp0) {
@@ -88,7 +107,44 @@ public class Cell {
   }
   /* ********************************************************************************* */
   public double Get_Amp() {
+//    if (this.IsWall) {
+//      return 0.0;
+//    } else {
     return this.Amp;
+//    }
+  }
+  /* ********************************************************************************* */
+  public void Set_Amp(double Amp0) {
+//    if (this.IsWall) {
+//      this.Amp = 0.0;
+//    } else {
+    double sqrT = Math.sqrt(this.TRate);// empirically this seems to work, but why?
+    this.Amp = Amp0 * sqrT;
+//    }
+    this.Check_Amp();
+  }
+  /* ********************************************************************************* */
+  public void Set_WallnessX(boolean IsWall0) {
+    this.IsWall = IsWall0;
+    if (this.IsWall) {
+      this.Damp = 0.0001;
+//    this.TRate = 0.0;
+//      this.DisconnectAll();
+    }
+  }
+  /* ********************************************************************************* */
+  public void Set_Wallness(double Damp0) {
+    if (Damp0 < 1.0) {
+      this.IsWall = true;
+      if (Double.isInfinite(Damp0)) {
+        System.out.println();
+      }
+      this.Damp = Damp0;
+//    this.TRate = 0.0;
+//      this.DisconnectAll();
+    } else {
+      this.IsWall = false;
+    }
   }
   /* ********************************************************************************* */
   public void Check_Amp() {
@@ -100,17 +156,15 @@ public class Cell {
     }
   }
   /* ********************************************************************************* */
-  public void Set_Amp(double Amp0) {
-//    this.Amp = Amp0;
-    double sqrT = Math.sqrt(this.TRate);// empirically this seems to work, but why?
-    this.Amp = Amp0 * sqrT;
-    this.Check_Amp();
-  }
-  /* ********************************************************************************* */
   public void Calc_Energy_Vector() {
+    double SumSq = 0.0;
+    double Mag;
     for (int DimCnt = 0; DimCnt < NDims; DimCnt++) {
-      this.PoyntingVect[DimCnt] = this.Calc_Energy_Vector(DimCnt);
+      Mag = this.Calc_Energy_Vector(DimCnt);
+      this.PoyntingVect[DimCnt] = Mag;
+      SumSq += Mag * Mag;
     }
+    this.EnergyMag = Math.sqrt(SumSq);
   }
   /* ********************************************************************************* */
   public double Calc_Basis() {
@@ -119,19 +173,21 @@ public class Cell {
     for (int DimCnt = 0; DimCnt < NDims; DimCnt++) {
       for (int AxCnt = 0; AxCnt < NAxis; AxCnt++) {
         if (this.NbrCross[DimCnt][AxCnt] != null) {
-          Sum += this.NbrCross[DimCnt][AxCnt].Amp;
+          Sum += this.NbrCross[DimCnt][AxCnt].Get_Amp();
           NNbrs++;
         }
       }
     }
-    //Sum += this.Amp; NNbrs++;
-    this.Basis = Sum / NNbrs;// 4 neighbors in 2 dimensions
+    if (NNbrs > 0) {
+      //Sum += this.Amp; NNbrs++;
+      this.Basis = Sum / NNbrs;// 4 neighbors in 2 dimensions
+    }
     return this.Basis;// 4 neighbors in 2 dimensions
 //    return Sum / (double) (NumNbrs);// 4 neighbors in 2 dimensions
   }
   /* ********************************************************************************* */
   public void Calc_Tension(double Base) {
-    this.Tension = Base - this.Amp;// pull toward base
+    this.Tension = Base - this.Amp;// pull toward avg amp of neighbors
   }
   /* ********************************************************************************* */
   public void Calc_Speed() {
@@ -141,20 +197,56 @@ public class Cell {
   public void Update() {// getting close to runcycle
     // look for better alg:
     // https://www.gamedev.net/resources/_/technical/graphics-programming-and-theory/the-water-effect-explained-r915
+//    if (this.IsWall) {
+//      this.Next_Amp = this.Amp = this.Prev_Amp = 0.0;
+//      this.Speed = 0.0;
+//    } else {
     double basis = this.Calc_Basis();
     this.Calc_Tension(basis);
     this.Calc_Speed();
+    if (this.IsWall) {
+//      this.Tension = 0.0;
+//      this.TRate = this.TRate * 2.0 / 2.0;
+//      this.Next_Amp = basis;
+//      this.Damp = 0.0; this.TRate = 1.0;
+    } else {
+    }
     this.Next_Amp = this.Amp + ((this.Speed * this.Damp) + (this.Tension * TRate));
     this.Calc_Energy_Vector();
+//    }
+
+    // statistics
+    this.SumAmp += this.Amp;
+    this.NumRuns++;
+    this.AvgAmp = this.SumAmp / this.NumRuns;
   }
   /* ********************************************************************************* */
   public void Rollover() {// set up for next cycle
     this.Prev_Amp = this.Amp;
     this.Amp = this.Next_Amp;
+    this.EnergyMag_Prev = this.EnergyMag;
+
+    // swap energy vectors.  dubious. 
+    double[] TempVect = this.PoyntingVect_Prev;
+    this.PoyntingVect_Prev = this.PoyntingVect;
+    this.PoyntingVect = TempVect;
+
     this.Check_Amp();
   }
   /* ********************************************************************************* */
+  public void Adjust_Sum_All(double Amount) {// raise or lower 'water level' of medium
+    this.Prev_Amp += Amount;// does this help or hurt? 
+    this.Adjust_Sum(Amount);
+  }
+  /* ********************************************************************************* */
   public void Adjust_Sum(double Amount) {// raise or lower 'water level' of medium
+    this.Amp += Amount;
+    this.Next_Amp += Amount;
+    this.Check_Amp();
+  }
+  /* ********************************************************************************* */
+  void Add_To_All(double Amount) {
+    this.Prev_Amp += Amount;// does this help or hurt? 
     this.Amp += Amount;
     this.Next_Amp += Amount;
     this.Check_Amp();
@@ -166,6 +258,23 @@ public class Cell {
     other.NbrCross[Dim][Axis] = this;// connect along same dimension, but opposite axis (eg your south connects to my north).
   }
   /* ********************************************************************************* */
+  public void DisconnectCross(int Dim, int Axis) {
+    Cell other = this.NbrCross[Dim][Axis];
+    if (other != null) {
+      this.NbrCross[Dim][Axis] = null;
+      Axis = (1 - Axis);// 1-1 = 0.  1-0 = 1.
+      other.NbrCross[Dim][Axis] = null;// connect along same dimension, but opposite axis (eg your south connects to my north).
+    }
+  }
+  /* ********************************************************************************* */
+  public void DisconnectAll() {
+    for (int dcnt = 0; dcnt < NDims; dcnt++) {
+      for (int axcnt = 0; axcnt < NAxis; axcnt++) {
+        this.DisconnectCross(dcnt, axcnt);
+      }
+    }
+  }
+  /* ********************************************************************************* */
   void RandAmp() {
     this.Amp = 1.0 * (Globals.RandomGenerator.nextDouble() * 2.0 - 1.0);// range -1.0 to 1.0
     this.Check_Amp();
@@ -174,32 +283,13 @@ public class Cell {
   public void Draw_Me(DrawingContext ParentDC) {// IDrawable
     double what = this.Amp;// / 8.0;// + 2;
     Color col = Globals.ToNegPos(what);
+
+    // draw cell background and outline
     ParentDC.gr.setColor(col);
     ParentDC.gr.fillRect((int) this.XLoc, (int) this.YLoc, (int) this.Wdt, (int) this.Hgt);
     ParentDC.gr.setColor(Color.black);
     ParentDC.gr.drawRect((int) this.XLoc, (int) this.YLoc, (int) this.Wdt, (int) this.Hgt);
-    if (false) {
-      ParentDC.gr.setColor(Color.green);
-      Cell nbr;
-      for (int DimCnt = 0; DimCnt < NDims; DimCnt++) {
-        for (int AxCnt = 0; AxCnt < NAxis; AxCnt++) {
-          nbr = this.NbrCross[DimCnt][AxCnt];
-          double jitter0 = Globals.RandomGenerator.nextDouble() * 5;
-          double jitter1 = Globals.RandomGenerator.nextDouble() * 5;
-          double jitter2 = Globals.RandomGenerator.nextDouble() * 5;
-          double jitter3 = Globals.RandomGenerator.nextDouble() * 5;
-          ParentDC.gr.drawLine((int) (this.XLoc + jitter0), (int) (this.YLoc + jitter1), (int) (nbr.XLoc + jitter2), (int) (nbr.YLoc + jitter3));
-        }
-      }
-    }
 
-    // normalize length
-    double SumSq = 0;
-    double mag = 0;
-    for (int DimCnt = 0; DimCnt < NDims; DimCnt++) {
-      mag = this.PoyntingVect[DimCnt];
-      SumSq += mag * mag;
-    }
     ParentDC.gr.setColor(Color.green);
     String AmpTxt;
     if (false) {
@@ -209,14 +299,19 @@ public class Cell {
     }
     if (false) {
       ParentDC.gr.setFont(new Font("TimesRoman", Font.PLAIN, 10));
-      AmpTxt = String.format("%.2f", this.MaxAmp);
-      ParentDC.gr.drawString(AmpTxt, (int) (this.XLoc), (int) (this.YLoc + 10));
-      AmpTxt = String.format("%.2f", this.MinAmp);
-      ParentDC.gr.drawString(AmpTxt, (int) (this.XLoc), (int) (this.YLoc + this.Hgt));
+
+      AmpTxt = String.format("%.2f", this.AvgAmp);
+      ParentDC.gr.drawString(AmpTxt, (int) (this.XLoc), (int) (this.YCtr + 4));
+      if (false) {
+        AmpTxt = String.format("%.2f", this.MaxAmp);
+        ParentDC.gr.drawString(AmpTxt, (int) (this.XLoc), (int) (this.YLoc + 10));
+        AmpTxt = String.format("%.2f", this.MinAmp);
+        ParentDC.gr.drawString(AmpTxt, (int) (this.XLoc), (int) (this.YLoc + this.Hgt));
+      }
     }
-    if (true) {
-      double hypot = Math.sqrt(SumSq);
-      if (Math.abs(hypot) > 0.00001) {
+    if (false) {
+      double hypot = this.EnergyMag;
+      if (Math.abs(hypot) > 0.00001) {// normalize length
         for (int DimCnt = 0; DimCnt < NDims; DimCnt++) {
           this.PoyntingVect[DimCnt] /= hypot;
         }
@@ -224,6 +319,10 @@ public class Cell {
         ParentDC.gr.drawLine((int) (this.XCtr), (int) (this.YCtr), (int) (this.XCtr + this.PoyntingVect[0] * len), (int) (this.YCtr + this.PoyntingVect[1] * len));
       }
       ParentDC.gr.fillOval((int) (this.XCtr - 2), (int) (this.YCtr - 2), (int) (4), (int) (4));
+    }
+    if (this.IsWall) {
+      ParentDC.gr.setColor(Color.green);
+      ParentDC.gr.fillOval((int) (this.XCtr - 1), (int) (this.YCtr - 1), (int) (2), (int) (2));
     }
   }
   /* ********************************************************************************* */
